@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Takt Fluência</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1F6F5C" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#19201D" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Takt">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600;700&display=swap">
+<style>
+/* Layout: coluna única de app móvel — barra fixa com streak, cartão de registro no topo, run chart da semana, seções em abas. */
+:root{
+  --bg:#F5F7F5; --surface:#FFFFFF; --surface-2:#EDF1EE;
+  --ink:#1A211E; --muted:#5E6B65; --line:#DDE4DF;
+  --accent:#1F6F5C; --accent-soft:#DFEDE7; --accent-ink:#13584A;
+  --warn:#9A5B12; --warn-soft:#F6EBDB;
+  --flame:#B8451F;
+  --f-display:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1412; --surface:#19201D; --surface-2:#222B27;
+  --ink:#E7EDEA; --muted:#94A49C; --line:#2C3833;
+  --accent:#4FB79A; --accent-soft:#15302A; --accent-ink:#7FD3BB;
+  --warn:#D79A4E; --warn-soft:#2E2518;
+  --flame:#E3764C;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1412; --surface:#19201D; --surface-2:#222B27;
+  --ink:#E7EDEA; --muted:#94A49C; --line:#2C3833;
+  --accent:#4FB79A; --accent-soft:#15302A; --accent-ink:#7FD3BB;
+  --warn:#D79A4E; --warn-soft:#2E2518;
+  --flame:#E3764C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-tap-highlight-color:transparent}
+img{max-width:100%}
+[hidden]{display:none!important}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.hbar{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;display:flex;align-items:center;gap:12px}
+.brand{font-family:var(--f-display);font-size:17px;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0}
+.streak{display:flex;align-items:baseline;gap:5px;background:var(--surface-2);border-radius:999px;padding:5px 12px}
+.streak b{font-family:var(--f-data);font-size:17px;font-weight:600;color:var(--flame);font-variant-numeric:tabular-nums}
+.streak span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+nav{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:2px}
+nav button{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--f-body);font-size:13px;font-weight:500;padding:9px 4px;cursor:pointer}
+nav button[aria-selected="true"]{color:var(--accent-ink);border-bottom-color:var(--accent)}
+nav button:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+section.pane{display:flex;flex-direction:column;gap:16px;padding-top:18px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+p{margin:0}
+.muted{color:var(--muted);font-size:13.5px}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{background:var(--surface-2);border:1px solid transparent;border-radius:9px;color:var(--ink);font-family:var(--f-body);font-size:13px;padding:8px 11px;cursor:pointer;min-width:0}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.mins{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.mins .chip{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+input[type=number],input[type=text]{background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-family:var(--f-body);font-size:16px;padding:9px 10px;width:100%;min-width:0}
+input[type=number]{font-family:var(--f-data);width:88px}
+.btn{background:var(--accent);border:none;border-radius:9px;color:#fff;font-family:var(--f-body);font-size:14px;font-weight:600;padding:11px 14px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:var(--surface-2);color:var(--ink);font-weight:500}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+ul.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+ul.list li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+ul.list li:first-child{border-top:none}
+.li-main{flex:1;min-width:0}
+.li-main b{font-weight:500;font-size:14px}
+.li-main small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.li-min{font-family:var(--f-data);font-variant-numeric:tabular-nums;font-size:14px;color:var(--accent-ink);font-weight:600}
+.x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:19px;line-height:1;padding:4px 6px}
+
+.weekgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:92px}
+.bar{display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0}
+.bar i{display:block;background:var(--accent);border-radius:4px 4px 2px 2px;min-height:3px}
+.bar.under i{background:var(--line)}
+.bar.today i{box-shadow:inset 0 0 0 2px var(--accent-ink)}
+.daylbl{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;font-size:10.5px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.meter{height:9px;border-radius:999px;background:var(--surface-2);overflow:hidden;position:relative}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.meter u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--muted);opacity:.75}
+.stats{display:flex;gap:14px;flex-wrap:wrap}
+.stat{min-width:0}
+.stat b{display:block;font-family:var(--f-data);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;line-height:1.2}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pace{font-size:13px;padding:9px 11px;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink)}
+.pace.behind{background:var(--warn-soft);color:var(--warn)}
+
+pre.prompt{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:var(--f-data);font-size:12px;line-height:1.6;margin:0;max-height:260px;overflow:auto;padding:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+ul.bul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:14px}
+a{color:var(--accent-ink)}
+
+.phase{display:flex;flex-direction:column;gap:7px;padding:14px 0;border-top:1px solid var(--line)}
+.phase:first-of-type{border-top:none;padding-top:0}
+.ph-h{display:flex;align-items:baseline;gap:9px}
+.ph-n{font-family:var(--f-data);font-size:12px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:5px;padding:1px 6px;flex:none}
+.phase h3{font-size:15px;font-weight:600;flex:1;min-width:0}
+.when{font-family:var(--f-data);font-size:11.5px;color:var(--muted);flex:none}
+.gate{font-size:13px;background:var(--surface-2);border-radius:8px;padding:9px 11px}
+.gate b{color:var(--accent-ink)}
+.banner{border-radius:10px;padding:11px 13px;font-size:13px;background:var(--warn-soft);color:var(--warn)}
+details summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:500}
+details[open] summary{margin-bottom:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);font-size:13px;padding:9px 15px;border-radius:999px;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <div class="brand">Takt Fluência</div>
+    <div class="streak"><b class="num" id="streakN">—</b><span>dias</span></div>
+  </div>
+  <nav role="tablist">
+    <button role="tab" id="tab-hoje" aria-selected="true" data-pane="hoje">Hoje</button>
+    <button role="tab" id="tab-guia" aria-selected="false" data-pane="guia">Guia</button>
+    <button role="tab" id="tab-plano" aria-selected="false" data-pane="plano">Plano</button>
+  </nav>
+</header>
+
+<div class="wrap">
+
+<!-- ============ HOJE ============ -->
+<section class="pane" id="pane-hoje">
+
+  <div class="banner" id="offline" hidden>Este navegador bloqueou o banco de dados local. Os registros desta sessão não serão guardados — saia do modo anônimo ou libere os dados do site.</div>
+
+  <div class="card">
+    <div class="eyebrow">O que você fez?</div>
+    <div class="chips" id="actChips"></div>
+    <div class="mins">
+      <button class="chip" type="button" data-min="2">2</button>
+      <button class="chip" type="button" data-min="5">5</button>
+      <button class="chip" type="button" data-min="10">10</button>
+      <button class="chip" type="button" data-min="15">15</button>
+      <button class="chip" type="button" data-min="30">30</button>
+      <button class="chip" type="button" data-min="60">60</button>
+      <input type="number" id="minCustom" min="1" max="600" step="1" inputmode="numeric" placeholder="min" aria-label="Minutos">
+    </div>
+    <input type="text" id="noteIn" maxlength="90" placeholder="Nota (opcional) — ex.: TED Chimamanda, 1º trecho">
+    <button class="btn" type="button" id="addBtn" disabled>Registrar</button>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="eyebrow">Hoje · <span id="todayLbl" class="num"></span></div>
+      <div class="num" style="font-size:13px;color:var(--muted)"><b id="todayTot">0</b> / <span id="dailyLbl">10</span> min</div>
+    </div>
+    <div class="meter"><i id="dayMeter" style="width:0%"></i></div>
+    <ul class="list" id="todayList"></ul>
+    <p class="muted" id="todayEmpty">Nenhum registro hoje. Dois minutos de shadowing já mantêm o streak vivo.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Semana <span id="weekRange" class="num" style="text-transform:none;letter-spacing:0"></span></div>
+    <div class="weekgrid" id="weekBars"></div>
+    <div class="daylbl"><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span><span>dom</span></div>
+    <div class="meter" style="margin-top:4px"><i id="weekMeter" style="width:0%"></i><u id="paceMark" style="left:0%"></u></div>
+    <div class="stats">
+      <div class="stat"><b class="num" id="wkTot">0</b><span>min na semana</span></div>
+      <div class="stat"><b class="num" id="wkLeft">0</b><span>faltam</span></div>
+      <div class="stat"><b class="num" id="wkDays">0</b><span>dias restantes</span></div>
+    </div>
+    <div class="pace" id="paceMsg"></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Trecho atual de shadowing</div>
+    <input type="text" id="clipIn" maxlength="120" placeholder="Qual áudio você está repetindo?">
+    <div class="row">
+      <span class="muted">Dia <b class="num" id="clipDay">1</b> de 4 no mesmo trecho</span>
+      <span style="flex:1"></span>
+      <button class="btn ghost" type="button" id="clipMinus" aria-label="Diminuir dia">−</button>
+      <button class="btn ghost" type="button" id="clipPlus" aria-label="Aumentar dia">+</button>
+      <button class="btn ghost" type="button" id="clipNew">Novo trecho</button>
+    </div>
+    <p class="muted">Trocar de trecho todo dia é o erro mais comum. Fique 3 a 4 dias no mesmo antes de seguir.</p>
+  </div>
+
+  <details class="card">
+    <summary>Metas e backup</summary>
+    <div class="row">
+      <label class="muted" for="goalDay">Mínimo diário</label>
+      <input type="number" id="goalDay" min="1" max="600" step="1" inputmode="numeric">
+      <span class="muted">min</span>
+    </div>
+    <div class="row" style="margin-top:9px">
+      <label class="muted" for="goalWeek">Meta semanal</label>
+      <input type="number" id="goalWeek" min="5" max="4000" step="5" inputmode="numeric">
+      <span class="muted">min</span>
+    </div>
+    <p class="muted" style="margin-top:10px">O mínimo diário só mantém o streak. A meta semanal é a que importa — ela é que absorve o dia de 2 minutos e o dia de 1 hora.</p>
+    <hr style="border:none;border-top:1px solid var(--line);margin:14px 0 2px">
+    <p class="muted">Os dados ficam só neste aparelho. Desinstalar o app ou limpar os dados do navegador apaga tudo. Exporte de vez em quando e guarde o arquivo.</p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost" type="button" id="expBtn">Exportar backup</button>
+      <button class="btn ghost" type="button" id="impBtn">Importar</button>
+      <input type="file" id="impFile" accept="application/json,.json" hidden>
+    </div>
+    <p class="muted" id="lastExp"></p>
+  </details>
+
+</section>
+
+<!-- ============ GUIA ============ -->
+<section class="pane" id="pane-guia" hidden>
+
+  <div class="card">
+    <div class="eyebrow">Sessão de voz · modo correção</div>
+    <p class="muted">Cole no início de cada sessão. Sem esta instrução explícita, a conversa flui e seus erros passam.</p>
+    <pre class="prompt" id="promptBox">You are my English conversation partner. Strict correction mode.
+
+Rules:
+- Correct every error: grammar, word choice, preposition, verb tense, article. Interrupt the flow if needed. Do not let anything pass to keep the conversation pleasant.
+- Also flag constructions that are technically correct but that a native speaker would not say. Give the natural version.
+- Format each correction as: [X] what I said -> [OK] what I should have said -> why, in one line.
+- After correcting, continue the conversation naturally with a follow-up question.
+- Never compliment my English. Never say "good job" or "that's close". Skip all praise.
+- If I make the same mistake twice in one session, call it out explicitly as a repeated error.
+- At the end of the session, list my recurring error patterns.
+
+Topic for today: [tema]. Let's start — ask me the first question.</pre>
+    <button class="btn" type="button" id="copyBtn">Copiar prompt</button>
+    <p class="muted">Temas que rendem: defender uma opinião, explicar algo técnico para leigo, discordar de uma afirmação. "Descreva seu dia" não força estrutura nenhuma.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Erros recorrentes</div>
+    <p class="muted">No fim de cada sessão o modelo lista seus padrões. Traga-os para cá. Esta lista encolhendo é o seu indicador de progresso real — mais do que minutos acumulados.</p>
+    <ul class="list" id="errList"></ul>
+    <p class="muted" id="errEmpty">Ainda vazio.</p>
+    <div class="row">
+      <input type="text" id="errIn" maxlength="120" placeholder="ex.: uso de 'make' onde cabe 'do'">
+      <button class="btn ghost" type="button" id="errAdd">Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Ciclo de shadowing · 15 min</div>
+    <ol class="steps">
+      <li>Pegue <b>60 a 90 segundos</b>, não mais. A repetição no mesmo trecho é o que funciona.</li>
+      <li>Ouça 2× lendo a transcrição. Marque onde o som não bate com o que está escrito.</li>
+      <li>Shadowing 4 a 5×: fale <b>junto</b> com o áudio, atrasado meio segundo — não depois dele.</li>
+      <li>Grave você sozinho, sem o áudio original tocando.</li>
+      <li>Ouça os dois em sequência. Anote 1 ou 2 diferenças concretas: ritmo, uma vogal, uma ligação entre palavras.</li>
+      <li>Mais 2 rodadas focando só naquilo.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">De onde tirar o áudio</div>
+    <p class="muted">Não use videoaula de inglês. Professor de idioma fala devagar e articulado — você treina um inglês que ninguém fala.</p>
+    <ul class="bul">
+      <li><b>Podcasts com transcrição.</b> Escolha entrevista, não monólogo roteirizado.</li>
+      <li><b>TED Talks.</b> Transcrição sincronizada, áudio limpo. O ponto de partida mais fácil.</li>
+      <li><b>YouTube do seu nicho</b> — manufatura, lean, operações. Vocabulário que você já domina em português e vai usar de verdade.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Discord · falar com humano</div>
+    <p class="muted">Convites expiram. Entre pelo Discover do próprio Discord e busque pelo nome. Comece pelo menor: no servidor de um milhão de pessoas você vira ruído.</p>
+    <ul class="bul">
+      <li><b>Speak English</b> — ~4 mil membros, acolhedor. Conta tempo em canal de voz e tem ranking de atividade.</li>
+      <li><b>Online Languages</b> — ~29 mil. Tem canais de inglês, espanhol, italiano e português: você oferece português e a troca é direta.</li>
+      <li><b>Language Sloth</b> — ~212 mil, parceiro oficial do Discord. Cobre seus três idiomas.</li>
+      <li><b>English</b> — o maior, mais de 970 mil membros, voz e texto ativos 24/7 e aulas ao vivo.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Ordem de importância</div>
+    <p>Shadowing todo dia &gt; Discord 2× por semana &gt; sessões de voz com IA.</p>
+    <p class="muted">As sessões de voz são as mais cômodas e as menos transformadoras: é conversa com quem nunca se cansa de você e sempre te entende. O desconforto de falar com um estranho que pode não te entender é parte do treino, não um obstáculo a contornar.</p>
+  </div>
+
+</section>
+
+<!-- ============ PLANO ============ -->
+<section class="pane" id="pane-plano" hidden>
+
+  <div class="card">
+    <div class="eyebrow">Inglês B2 → C1</div>
+    <p class="muted">Estimativa de referência: a travessia de B2 para C1 costuma pedir algo na casa de 200 horas de estudo dirigido. A 3h30 por semana, isso dá cerca de 12 meses. As fases avançam por <b>critério</b>, não por data — se o critério não caiu, a fase não acabou.</p>
+  </div>
+
+  <div class="card">
+    <div class="phase">
+      <div class="ph-h"><span class="ph-n">00</span><h3>Calibragem</h3><span class="when">sem. 1–2</span></div>
+      <p>Medir o ponto de partida com um teste de nível gratuito e montar o primeiro trecho de shadowing. Nada de volume ainda.</p>
+      <div class="gate"><b>Critério:</b> 14 dias sem quebrar o streak. Só isso.</div>
+    </div>
+    <div class="phase">
+      <div class="ph-h"><span class="ph-n">01</span><h3>Destravar a fala</h3><span class="when">mês 1–3</span></div>
+      <p>Shadowing diário e 3 sessões de voz por semana. Entre no Discord só na semana 3 — antes disso você ainda não tem repertório sonoro para aproveitar.</p>
+      <div class="gate"><b>Critério:</b> sustentar 20 minutos de conversa sem travar nem recorrer ao português.</div>
+    </div>
+    <div class="phase">
+      <div class="ph-h"><span class="ph-n">02</span><h3>Precisão</h3><span class="when">mês 4–7</span></div>
+      <p>O log de erros recorrentes vira o centro do trabalho. Cada sessão ataca um padrão da lista. Entra a escrita: redija em inglês primeiro, traduza depois — nunca o contrário.</p>
+      <div class="gate"><b>Critério:</b> a lista de erros encolhendo semana a semana, e nenhum item sobrevivendo mais de um mês.</div>
+    </div>
+    <div class="phase">
+      <div class="ph-h"><span class="ph-n">03</span><h3>Amplitude</h3><span class="when">mês 8–12</span></div>
+      <p>Input difícil: podcast sem transcrição, conteúdo acadêmico, sotaques diferentes do americano padrão. Vocabulário abstrato e argumentação.</p>
+      <div class="gate"><b>Critério:</b> defender uma posição técnica por 10 minutos, sob contestação, sem perder a linha.</div>
+    </div>
+    <div class="phase">
+      <div class="ph-h"><span class="ph-n">04</span><h3>Verificação</h3><span class="when">mês 12–14</span></div>
+      <p>Teste formal. Gratuito serve se o objetivo é só medir; pago, se você precisar do certificado para a carreira acadêmica.</p>
+      <div class="gate"><b>Critério:</b> C1 confirmado por avaliação externa, não por autoavaliação.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Depois do inglês</div>
+    <p><b>Espanhol</b> entra quando o inglês estiver estável — não antes. Para falante de português é o idioma mais barato que existe, e justamente por isso não precisa de método: precisa de imersão direta e de alguém que corrija o portunhol.</p>
+    <p><b>Italiano</b> por último. Subir espanhol e italiano juntos, sendo os dois próximos do português, é a receita mais eficiente de misturar os três na mesma frase.</p>
+    <p class="muted">Poliglotas quase nunca sobem dois idiomas do zero ao mesmo tempo. A sequência não é falta de ambição — é o que evita que as línguas colidam.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">O que este app não faz</div>
+    <p class="muted">Ele não avalia sua pronúncia. Transcritores automáticos são bons demais: eles consertam a pronúncia ruim e devolvem a palavra certa, então você fala errado e o sistema aprova. Quem avalia pronúncia aqui é o seu ouvido, comparando a sua gravação com a do nativo — passo 5 do ciclo.</p>
+  </div>
+
+</section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== banco local (IndexedDB) ===================== */
+var DB_NAME="takt-fluencia",DB_VER=1,idb=null;
+function openDB(){
+  return new Promise(function(res,rej){
+    var rq;
+    try{ rq=indexedDB.open(DB_NAME,DB_VER); }catch(e){ rej(e); return; }
+    rq.onupgradeneeded=function(ev){
+      var d=ev.target.result;
+      if(!d.objectStoreNames.contains("days"))d.createObjectStore("days",{keyPath:"date"});
+      if(!d.objectStoreNames.contains("config"))d.createObjectStore("config",{keyPath:"k"});
+    };
+    rq.onsuccess=function(){res(rq.result);};
+    rq.onerror=function(){rej(rq.error);};
+    rq.onblocked=function(){rej(new Error("blocked"));};
+  });
+}
+function tx(store,mode){return idb.transaction(store,mode).objectStore(store);}
+function put(store,val){
+  return new Promise(function(res,rej){
+    var r=tx(store,"readwrite").put(val);
+    r.onsuccess=function(){res();};r.onerror=function(){rej(r.error);};
+  });
+}
+function del(store,key){
+  return new Promise(function(res,rej){
+    var r=tx(store,"readwrite").delete(key);
+    r.onsuccess=function(){res();};r.onerror=function(){rej(r.error);};
+  });
+}
+function all(store){
+  return new Promise(function(res,rej){
+    var out=[],r=tx(store,"readonly").openCursor();
+    r.onsuccess=function(e){var c=e.target.result;if(c){out.push(c.value);c.continue();}else res(out);};
+    r.onerror=function(){rej(r.error);};
+  });
+}
+
+/* ===================== estado ===================== */
+var ACTS=[
+  {k:"shadow",label:"Shadowing"},
+  {k:"voice",label:"Sessão de voz"},
+  {k:"human",label:"Discord / humano"},
+  {k:"input",label:"Input (ouvir/ler)"},
+  {k:"write",label:"Escrita"},
+  {k:"vocab",label:"Vocabulário"}
+];
+var LBL={};ACTS.forEach(function(a){LBL[a.k]=a.label;});
+var state={days:{},settings:{dailyGoal:10,weeklyGoal:210},shadow:{clip:"",day:1},errors:[],lastExport:null,ready:false,live:false};
+var sel={act:null,min:null};
+
+function pad(n){return n<10?"0"+n:""+n;}
+function key(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function today(){return key(new Date());}
+function addDays(d,n){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x;}
+function mondayOf(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var w=(x.getDay()+6)%7;return addDays(x,-w);}
+function total(k){var r=state.days[k];return r&&r.total?r.total:0;}
+function fmtShort(d){return pad(d.getDate())+"/"+pad(d.getMonth()+1);}
+function streak(){
+  var g=state.settings.dailyGoal,n=0,d=new Date();
+  if(total(key(d))<g)d=addDays(d,-1);
+  for(var i=0;i<1200;i++){ if(total(key(d))>=g){n++;d=addDays(d,-1);} else break; }
+  return n;
+}
+function toast(m){var t=document.getElementById("toast");t.textContent=m;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("on");},2000);}
+
+/* ===================== render ===================== */
+function render(){
+  var tk=today(),g=state.settings.dailyGoal,wg=state.settings.weeklyGoal;
+  document.getElementById("streakN").textContent=state.ready?streak():"—";
+  var dt=total(tk);
+  document.getElementById("todayTot").textContent=dt;
+  document.getElementById("dailyLbl").textContent=g;
+  document.getElementById("todayLbl").textContent=fmtShort(new Date());
+  document.getElementById("dayMeter").style.width=Math.min(100,g?dt/g*100:0)+"%";
+
+  var rec=state.days[tk],ents=(rec&&rec.entries)||[];
+  var ul=document.getElementById("todayList");ul.textContent="";
+  ents.slice().reverse().forEach(function(e){
+    var li=document.createElement("li");
+    var m=document.createElement("div");m.className="li-main";
+    var b=document.createElement("b");b.textContent=LBL[e.act]||e.act;m.appendChild(b);
+    if(e.note){var s=document.createElement("small");s.textContent=e.note;m.appendChild(s);}
+    var mi=document.createElement("div");mi.className="li-min";mi.textContent=e.min+" min";
+    var x=document.createElement("button");x.className="x";x.type="button";x.setAttribute("aria-label","Remover registro");x.textContent="×";
+    x.addEventListener("click",function(){removeEntry(e.id);});
+    li.appendChild(m);li.appendChild(mi);li.appendChild(x);ul.appendChild(li);
+  });
+  document.getElementById("todayEmpty").hidden=ents.length>0;
+
+  var mon=mondayOf(new Date()),wt=0,maxv=g,days=[];
+  for(var i=0;i<7;i++){var d=addDays(mon,i),v=total(key(d));days.push({d:d,v:v});wt+=v;if(v>maxv)maxv=v;}
+  var bars=document.getElementById("weekBars");bars.textContent="";
+  days.forEach(function(o){
+    var div=document.createElement("div");
+    div.className="bar"+(o.v>=g?"":" under")+(key(o.d)===tk?" today":"");
+    var i2=document.createElement("i");
+    i2.style.height=Math.max(3,Math.round(o.v/maxv*88))+"px";
+    div.appendChild(i2);div.title=fmtShort(o.d)+" — "+o.v+" min";bars.appendChild(div);
+  });
+  document.getElementById("weekRange").textContent=fmtShort(mon)+"–"+fmtShort(addDays(mon,6));
+  document.getElementById("weekMeter").style.width=Math.min(100,wg?wt/wg*100:0)+"%";
+
+  var elapsed=((new Date().getDay()+6)%7)+1,left=7-elapsed;
+  document.getElementById("paceMark").style.left=Math.min(100,elapsed/7*100)+"%";
+  document.getElementById("wkTot").textContent=wt;
+  var rem=Math.max(0,wg-wt);
+  document.getElementById("wkLeft").textContent=rem;
+  document.getElementById("wkDays").textContent=left;
+  var expected=Math.round(wg*elapsed/7),pm=document.getElementById("paceMsg");
+  var dd=left||1,perDay=Math.ceil(rem/dd),dlbl=dd===1?" dia":" dias";
+  if(wt>=wg){pm.className="pace";pm.textContent="Meta da semana batida. O que vier agora é folga.";}
+  else if(wt>=expected){pm.className="pace";pm.textContent="No ritmo. Faltam "+rem+" min em "+dd+dlbl+" — cerca de "+perDay+" min por dia.";}
+  else{pm.className="pace behind";pm.textContent="Atrasado em "+(expected-wt)+" min. Restam "+rem+" min em "+dd+dlbl+" — cerca de "+perDay+" min por dia.";}
+
+  var gd=document.getElementById("goalDay"),gw=document.getElementById("goalWeek"),ci=document.getElementById("clipIn");
+  if(document.activeElement!==gd)gd.value=g;
+  if(document.activeElement!==gw)gw.value=wg;
+  if(document.activeElement!==ci)ci.value=state.shadow.clip||"";
+  document.getElementById("clipDay").textContent=state.shadow.day||1;
+  document.getElementById("lastExp").textContent=state.lastExport?("Último backup: "+state.lastExport):"Nenhum backup exportado ainda.";
+
+  var el=document.getElementById("errList");el.textContent="";
+  state.errors.forEach(function(t,ix){
+    var li=document.createElement("li");
+    var m=document.createElement("div");m.className="li-main";
+    var b=document.createElement("b");b.textContent=t;m.appendChild(b);
+    var x=document.createElement("button");x.className="x";x.type="button";x.setAttribute("aria-label","Remover erro");x.textContent="×";
+    x.addEventListener("click",function(){state.errors.splice(ix,1);saveCfg("errors",state.errors);render();});
+    li.appendChild(m);li.appendChild(x);el.appendChild(li);
+  });
+  document.getElementById("errEmpty").hidden=state.errors.length>0;
+}
+
+/* ===================== escrita ===================== */
+function saveCfg(k,v){ if(!state.live)return Promise.resolve(); return put("config",{k:k,v:v}).catch(function(){toast("Não deu para salvar");}); }
+function saveDay(k){
+  if(!state.live)return;
+  var rec=state.days[k];
+  if(!rec||!rec.entries.length){ del("days",k).catch(function(){}); return; }
+  put("days",{date:k,total:rec.total,entries:rec.entries}).catch(function(){toast("Não deu para salvar");});
+}
+function recalc(rec){rec.total=rec.entries.reduce(function(s,e){return s+e.min;},0);return rec;}
+function addEntry(){
+  if(!sel.act||!sel.min)return;
+  var k=today(),old=state.days[k],rec={date:k,entries:(old?old.entries.slice():[]),total:0};
+  var note=document.getElementById("noteIn").value.trim();
+  rec.entries.push({id:String(Date.now())+Math.random().toString(36).slice(2,7),act:sel.act,min:sel.min,note:note,at:new Date().toISOString()});
+  state.days[k]=recalc(rec);
+  document.getElementById("noteIn").value="";
+  clearSel();render();saveDay(k);
+}
+function removeEntry(id){
+  var k=today(),old=state.days[k];if(!old)return;
+  state.days[k]=recalc({date:k,entries:old.entries.filter(function(e){return e.id!==id;}),total:0});
+  render();saveDay(k);
+}
+function clearSel(){
+  sel.act=null;sel.min=null;
+  document.getElementById("minCustom").value="";
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(c){c.setAttribute("aria-pressed","false");});
+  document.getElementById("addBtn").disabled=true;
+}
+function syncBtn(){document.getElementById("addBtn").disabled=!(sel.act&&sel.min>0);}
+
+/* ===================== eventos ===================== */
+var chipsEl=document.getElementById("actChips");
+ACTS.forEach(function(a){
+  var b=document.createElement("button");b.className="chip";b.type="button";b.textContent=a.label;
+  b.setAttribute("aria-pressed","false");
+  b.addEventListener("click",function(){
+    Array.prototype.forEach.call(chipsEl.children,function(c){c.setAttribute("aria-pressed","false");});
+    b.setAttribute("aria-pressed","true");sel.act=a.k;syncBtn();
+  });
+  chipsEl.appendChild(b);
+});
+Array.prototype.forEach.call(document.querySelectorAll(".mins .chip"),function(c){
+  c.addEventListener("click",function(){
+    Array.prototype.forEach.call(document.querySelectorAll(".mins .chip"),function(o){o.setAttribute("aria-pressed","false");});
+    c.setAttribute("aria-pressed","true");
+    document.getElementById("minCustom").value="";
+    sel.min=parseInt(c.dataset.min,10);syncBtn();
+  });
+});
+document.getElementById("minCustom").addEventListener("input",function(){
+  Array.prototype.forEach.call(document.querySelectorAll(".mins .chip"),function(o){o.setAttribute("aria-pressed","false");});
+  var v=parseInt(this.value,10);sel.min=(v>0&&v<=600)?v:null;syncBtn();
+});
+document.getElementById("addBtn").addEventListener("click",addEntry);
+
+document.getElementById("goalDay").addEventListener("change",function(){
+  var v=parseInt(this.value,10);
+  if(v>0&&v<=600){state.settings.dailyGoal=v;saveCfg("settings",state.settings);render();}else render();
+});
+document.getElementById("goalWeek").addEventListener("change",function(){
+  var v=parseInt(this.value,10);
+  if(v>=5&&v<=4000){state.settings.weeklyGoal=v;saveCfg("settings",state.settings);render();}else render();
+});
+
+var clipT=null;
+document.getElementById("clipIn").addEventListener("input",function(){
+  state.shadow.clip=this.value;
+  clearTimeout(clipT);clipT=setTimeout(function(){saveCfg("shadow",state.shadow);},600);
+});
+document.getElementById("clipPlus").addEventListener("click",function(){state.shadow.day=Math.min(9,(state.shadow.day||1)+1);render();saveCfg("shadow",state.shadow);});
+document.getElementById("clipMinus").addEventListener("click",function(){state.shadow.day=Math.max(1,(state.shadow.day||1)-1);render();saveCfg("shadow",state.shadow);});
+document.getElementById("clipNew").addEventListener("click",function(){state.shadow={clip:"",day:1};render();saveCfg("shadow",state.shadow);});
+
+document.getElementById("errAdd").addEventListener("click",function(){
+  var i=document.getElementById("errIn"),v=i.value.trim();
+  if(!v)return;state.errors.push(v);i.value="";saveCfg("errors",state.errors);render();
+});
+document.getElementById("errIn").addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("errAdd").click();});
+
+document.getElementById("copyBtn").addEventListener("click",function(){
+  var box=document.getElementById("promptBox"),txt=box.textContent;
+  function fallback(){
+    var r=document.createRange();r.selectNodeContents(box);
+    var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+    toast("Prompt selecionado — use Copiar");
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){toast("Prompt copiado");},fallback);
+  }else fallback();
+});
+
+/* backup */
+document.getElementById("expBtn").addEventListener("click",function(){
+  var payload={app:"takt-fluencia",version:1,exportedAt:new Date().toISOString(),
+    settings:state.settings,shadow:state.shadow,errors:state.errors,
+    days:Object.keys(state.days).map(function(k){return state.days[k];})};
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="takt-fluencia-"+today()+".json";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  state.lastExport=today();saveCfg("lastExport",state.lastExport);render();
+  toast("Backup gerado");
+});
+document.getElementById("impBtn").addEventListener("click",function(){document.getElementById("impFile").click();});
+document.getElementById("impFile").addEventListener("change",function(){
+  var f=this.files&&this.files[0];if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    var data;
+    try{data=JSON.parse(fr.result);}catch(e){toast("Arquivo inválido");return;}
+    if(!data||data.app!=="takt-fluencia"){toast("Este arquivo não é um backup do Takt");return;}
+    if(data.settings)state.settings={dailyGoal:data.settings.dailyGoal||10,weeklyGoal:data.settings.weeklyGoal||210};
+    if(data.shadow)state.shadow={clip:data.shadow.clip||"",day:data.shadow.day||1};
+    if(Array.isArray(data.errors))state.errors=data.errors;
+    var n=0;
+    (Array.isArray(data.days)?data.days:[]).forEach(function(r){
+      if(!r||!r.date||!Array.isArray(r.entries))return;
+      state.days[r.date]=recalc({date:r.date,entries:r.entries,total:0});n++;
+    });
+    if(state.live){
+      saveCfg("settings",state.settings);saveCfg("shadow",state.shadow);saveCfg("errors",state.errors);
+      Object.keys(state.days).forEach(saveDay);
+    }
+    render();toast("Importado: "+n+(n===1?" dia":" dias"));
+  };
+  fr.readAsText(f);
+  this.value="";
+});
+
+/* abas */
+Array.prototype.forEach.call(document.querySelectorAll("nav button"),function(b){
+  b.addEventListener("click",function(){
+    Array.prototype.forEach.call(document.querySelectorAll("nav button"),function(o){
+      o.setAttribute("aria-selected",String(o===b));
+      document.getElementById("pane-"+o.dataset.pane).hidden=(o!==b);
+    });
+    try{localStorage.setItem("takt-tab",b.dataset.pane);}catch(e){}
+    window.scrollTo(0,0);
+  });
+});
+(function(){
+  var t=null;
+  try{t=localStorage.getItem("takt-tab");}catch(e){}
+  var h=(location.hash||"").replace("#","");
+  var want=(h==="guia"||h==="plano"||h==="hoje")?h:t;
+  if(want&&want!=="hoje"){var el=document.getElementById("tab-"+want);if(el)el.click();}
+})();
+
+render();
+
+/* ===================== carga ===================== */
+openDB().then(function(d){
+  idb=d;state.live=true;
+  return Promise.all([all("days"),all("config")]);
+}).then(function(r){
+  r[0].forEach(function(rec){
+    state.days[rec.date]={date:rec.date,total:rec.total||0,entries:Array.isArray(rec.entries)?rec.entries:[]};
+  });
+  r[1].forEach(function(c){
+    if(c.k==="settings"&&c.v)state.settings={dailyGoal:c.v.dailyGoal||10,weeklyGoal:c.v.weeklyGoal||210};
+    if(c.k==="shadow"&&c.v)state.shadow={clip:c.v.clip||"",day:c.v.day||1};
+    if(c.k==="errors"&&Array.isArray(c.v))state.errors=c.v;
+    if(c.k==="lastExport")state.lastExport=c.v;
+  });
+  state.ready=true;render();
+}).catch(function(){
+  state.live=false;state.ready=true;
+  document.getElementById("offline").hidden=false;
+  render();
+});
+
+/* vira o dia enquanto o app está aberto */
+setInterval(function(){
+  if(state._day!==today()){state._day=today();render();}
+},60000);
+state._day=today();
+
+/* service worker */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+})();
+</script>
+</body>
+</html>
